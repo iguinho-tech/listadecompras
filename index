@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lista de Compras</title>
+    <!-- Fontes Google -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Roboto:wght@400;700&family=Roboto+Condensed:wght@400;700&display=swap" rel="stylesheet">
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        .font-handwritten { font-family: 'Pacifico', cursive; }
+        .font-roboto { font-family: 'Roboto', sans-serif; }
+        .font-roboto-condensed { font-family: 'Roboto Condensed', sans-serif; }
+        
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+
+        .modal-enter { animation: zoomIn 0.2s ease-out; }
+        @keyframes zoomIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        .menu-slide-up { animation: slideUp 0.3s ease-out; }
+        @keyframes slideUp {
+            from { transform: translateY(100%); }
+            to { transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 font-roboto-condensed pb-40">
+
+    <!-- Notificações -->
+    <div id="toast" class="fixed top-4 left-1/2 -translate-x-1/2 z-[100] px-6 py-3 rounded-full shadow-lg flex items-center gap-2 hidden transition-all duration-300">
+        <i id="toast-icon" data-lucide="info" class="w-5 h-5"></i>
+        <span id="toast-text" class="text-sm font-bold"></span>
+    </div>
+
+    <!-- Header -->
+    <header onclick="openMenu()" class="p-6 bg-white shadow-sm sticky top-0 z-10 cursor-pointer hover:bg-gray-50 transition-colors">
+        <h1 class="text-3xl text-center text-black font-handwritten select-none">
+            Lista de Compras
+        </h1>
+    </header>
+
+    <!-- Main List Content -->
+    <main id="list-container" class="max-w-md mx-auto p-4 space-y-2">
+        <div class="text-center py-20 text-gray-400 italic">
+            Nenhum item na lista.
+        </div>
+    </main>
+
+    <!-- Floating Controls -->
+    <div class="fixed bottom-6 left-0 right-0 px-6 flex items-end justify-between max-w-md mx-auto z-20 pointer-events-none">
+        <!-- Total/Budget Box -->
+        <div id="total-box" onclick="openBudgetModal()" class="bg-emerald-500 text-white p-4 rounded-3xl shadow-xl flex flex-col min-w-[140px] cursor-pointer pointer-events-auto transition-colors duration-300">
+            <div id="total-display" class="font-roboto font-bold text-xl">R$ 0,00</div>
+            <div id="budget-info" class="hidden mt-1 pt-1 border-t border-white/20 text-[10px] font-roboto space-y-0.5">
+                <div class="flex justify-between opacity-80">
+                    <span id="budget-value">R$ 0,00</span>
+                </div>
+                <div class="flex justify-between font-bold">
+                    <span id="balance-label">Troco: </span>
+                    <span id="balance-value">R$ 0,00</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Add Button -->
+        <button onclick="openProductModal('add')" class="bg-blue-500 text-white w-14 h-14 rounded-full shadow-xl flex items-center justify-center pointer-events-auto active:scale-90 transition-transform">
+            <i data-lucide="plus" class="w-8 h-8"></i>
+        </button>
+    </div>
+
+    <!-- Modal: Produto -->
+    <div id="product-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white w-full max-w-sm rounded-[2rem] p-6 shadow-2xl modal-enter">
+            <form id="product-form" class="space-y-6">
+                <div id="error-msg" class="text-red-500 text-xs font-bold flex items-center gap-1 hidden">
+                    <i data-lucide="alert-circle" class="w-3.5 h-3.5"></i> preencha o nome e o preço.
+                </div>
+                
+                <input id="p-name" type="text" placeholder="escreva aqui o nome e marca do produto" class="w-full bg-gray-50 border-b-2 border-gray-100 p-3 outline-none focus:border-blue-500 text-lg">
+                
+                <div class="flex items-center gap-2">
+                    <span class="font-bold text-gray-300">R$</span>
+                    <input id="p-price" type="number" step="0.01" placeholder="preço unitário" class="w-full bg-gray-50 border-b-2 border-gray-100 p-3 outline-none focus:border-blue-500 font-roboto font-bold text-xl">
+                </div>
+
+                <div class="flex items-center justify-between bg-gray-50 p-2 rounded-2xl">
+                    <div class="flex gap-1">
+                        <button type="button" onclick="adjustQty(-10)" class="w-8 h-8 bg-white shadow-sm rounded-lg text-[10px] font-bold text-red-500">-10</button>
+                        <button type="button" onclick="adjustQty(-5)" class="w-8 h-8 bg-white shadow-sm rounded-lg text-[10px] font-bold text-red-500">-5</button>
+                        <button type="button" onclick="adjustQty(-1)" class="w-8 h-8 bg-white shadow-sm rounded-lg text-xs font-bold text-red-500">-1</button>
+                    </div>
+                    <input id="p-qty" type="number" step="any" class="w-14 bg-transparent text-center font-bold text-xl outline-none" value="1">
+                    <div class="flex gap-1">
+                        <button type="button" onclick="adjustQty(1)" class="w-8 h-8 bg-white shadow-sm rounded-lg text-xs font-bold text-blue-500">+1</button>
+                        <button type="button" onclick="adjustQty(5)" class="w-8 h-8 bg-white shadow-sm rounded-lg text-[10px] font-bold text-blue-500">+5</button>
+                        <button type="button" onclick="adjustQty(10)" class="w-8 h-8 bg-white shadow-sm rounded-lg text-[10px] font-bold text-blue-500">+10</button>
+                    </div>
+                </div>
+
+                <div class="flex gap-3 pt-2">
+                    <button type="button" onclick="closeModal('product-modal')" class="flex-1 py-3 font-bold text-gray-400">cancelar</button>
+                    <button type="submit" class="flex-1 bg-blue-500 text-white py-3 rounded-2xl font-bold shadow-lg">confirmar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Menu -->
+    <div id="menu-modal" class="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-end justify-center hidden">
+        <div class="bg-white w-full max-w-md rounded-t-[2.5rem] p-8 shadow-2xl menu-slide-up">
+            <div class="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-8" onclick="closeModal('menu-modal')"></div>
+            <div class="space-y-6">
+                <button onclick="exportAsText()" class="w-full flex items-center gap-4 p-4 bg-gray-50 rounded-2xl active:bg-gray-100">
+                    <div class="bg-blue-100 text-blue-600 p-3 rounded-xl"><i data-lucide="share-2"></i></div>
+                    <div class="text-left">
+                        <div class="font-bold text-gray-800">Exportar como Texto</div>
+                        <div class="text-xs text-gray-400 tracking-wider">Copiar lista formatada</div>
+                    </div>
+                </button>
+
+                <div class="bg-gray-50 p-4 rounded-2xl space-y-3">
+                    <div class="flex items-center gap-4">
+                        <div class="bg-emerald-100 text-emerald-600 p-3 rounded-xl"><i data-lucide="save"></i></div>
+                        <div class="text-left flex-1">
+                            <div class="font-bold text-gray-800">Salvar Lista</div>
+                            <div class="text-xs text-gray-400">Armazenar na nuvem</div>
+                        </div>
+                    </div>
+                    <div class="flex gap-2">
+                        <input id="list-name-input" placeholder="Nome da lista..." class="flex-1 bg-white border border-gray-200 rounded-xl px-4 py-2 text-sm outline-none">
+                        <button onclick="saveList()" class="bg-emerald-500 text-white px-4 py-2 rounded-xl font-bold text-sm">Salvar</button>
+                    </div>
+                </div>
+
+                <button onclick="openHistory()" class="w-full flex items-center gap-4 p-4 bg-gray-50 rounded-2xl">
+                    <div class="bg-purple-100 text-purple-600 p-3 rounded-xl"><i data-lucide="folder-open"></i></div>
+                    <div class="text-left">
+                        <div class="font-bold text-gray-800">Listas Salvas</div>
+                        <div class="text-xs text-gray-400 tracking-wider">Gerenciar histórico</div>
+                    </div>
+                </button>
+
+                <button onclick="closeModal('menu-modal')" class="w-full py-4 text-gray-400 font-bold uppercase tracking-widest text-xs">Fechar Menu</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Histórico -->
+    <div id="history-modal" class="fixed inset-0 bg-white z-[60] flex flex-col hidden">
+        <header class="p-6 border-b flex items-center justify-between">
+            <h2 class="text-xl font-bold">Listas Salvas</h2>
+            <button onclick="closeModal('history-modal')" class="p-2"><i data-lucide="x"></i></button>
+        </header>
+        <div id="history-content" class="flex-1 overflow-y-auto p-4 space-y-3">
+            <!-- Items via JS -->
+        </div>
+    </div>
+
+    <!-- Modal: Saldo -->
+    <div id="budget-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white w-full max-w-sm rounded-[2rem] p-6 shadow-2xl modal-enter">
+            <input id="budget-input" type="number" step="0.01" placeholder="informe seu saldo" class="w-full bg-gray-50 rounded-2xl p-5 outline-none focus:ring-4 focus:ring-emerald-100 font-roboto font-bold text-2xl text-center">
+            <div class="flex flex-col gap-2 mt-6">
+                <button onclick="setBudget()" class="w-full bg-emerald-500 text-white py-4 rounded-xl font-bold">definir saldo</button>
+                <button onclick="clearBudget()" class="w-full py-2 text-red-400 text-xs font-bold">limpar saldo</button>
+                <button onclick="closeModal('budget-modal')" class="w-full py-2 text-gray-400 text-xs">fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, collection, onSnapshot, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Variáveis Globais de Ambiente
+        const firebaseConfig = JSON.parse(__firebase_config);
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-shopping-app';
+
+        // Estado do App
+        let state = {
+            items: [],
+            budget: null,
+            editingId: null,
+            user: null,
+            historyUnsubscribe: null
+        };
+
+        // Autenticação (Regra 3)
+        async function authenticate() {
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (error) {
+                console.error("Auth error:", error);
+            }
+        }
+
+        onAuthStateChanged(auth, (user) => {
+            state.user = user;
+            if (user) {
+                initHistoryListener();
+            } else {
+                if (state.historyUnsubscribe) state.historyUnsubscribe();
+            }
+        });
+
+        authenticate();
+
+        // Formatação de Dinheiro
+        const fmt = (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
+
+        // Funções de UI
+        window.showToast = (text, type = 'success') => {
+            const el = document.getElementById('toast');
+            const icon = document.getElementById('toast-icon');
+            const txt = document.getElementById('toast-text');
+            
+            el.className = `fixed top-4 left-1/2 -translate-x-1/2 z-[100] px-6 py-3 rounded-full shadow-lg flex items-center gap-2 transition-all duration-300 ${type === 'error' ? 'bg-red-500' : 'bg-black'} text-white`;
+            txt.innerText = text;
+            el.classList.remove('hidden');
+            setTimeout(() => el.classList.add('hidden'), 3000);
+        };
+
+        window.openProductModal = (mode, itemId = null) => {
+            let item = null;
+            if (itemId) {
+                item = state.items.find(i => i.id === itemId);
+            }
+            state.editingId = item ? item.id : null;
+            document.getElementById('p-name').value = item ? item.name : '';
+            document.getElementById('p-price').value = item ? item.price : '';
+            document.getElementById('p-qty').value = item ? item.quantity : 1;
+            document.getElementById('error-msg').classList.add('hidden');
+            document.getElementById('product-modal').classList.remove('hidden');
+            document.getElementById('p-name').focus();
+        };
+
+        window.closeModal = (id) => document.getElementById(id).classList.add('hidden');
+        window.openMenu = () => document.getElementById('menu-modal').classList.remove('hidden');
+        window.openBudgetModal = () => document.getElementById('budget-modal').classList.remove('hidden');
+        window.adjustQty = (amt) => {
+            const input = document.getElementById('p-qty');
+            input.value = Math.max(0, parseFloat(input.value || 0) + amt);
+        };
+
+        window.setBudget = () => {
+            const val = parseFloat(document.getElementById('budget-input').value);
+            state.budget = isNaN(val) ? null : val;
+            closeModal('budget-modal');
+            render();
+        };
+
+        window.clearBudget = () => {
+            state.budget = null;
+            document.getElementById('budget-input').value = '';
+            closeModal('budget-modal');
+            render();
+        };
+
+        window.removeItem = (e, id) => {
+            e.stopPropagation();
+            state.items = state.items.filter(i => i.id !== id);
+            render();
+        };
+
+        // Renderização da Lista
+        function render() {
+            const container = document.getElementById('list-container');
+            const totalDisplay = document.getElementById('total-display');
+            const totalBox = document.getElementById('total-box');
+            const budgetInfo = document.getElementById('budget-info');
+
+            if (state.items.length === 0) {
+                container.innerHTML = `<div class="text-center py-20 text-gray-400 italic">Nenhum item na lista.</div>`;
+            } else {
+                container.innerHTML = state.items.map(item => `
+                    <div onclick="openProductModal('edit', '${item.id}')" class="bg-white p-3 rounded-xl shadow-sm border border-gray-100 flex items-center gap-3 active:bg-gray-50 transition-colors animate-in">
+                        <button onclick="removeItem(event, '${item.id}')" class="bg-red-50 text-red-400 p-2 rounded-lg"><i data-lucide="x" class="w-4 h-4"></i></button>
+                        <div class="bg-blue-50 px-2 py-1 rounded-lg min-w-[40px] text-center font-bold text-blue-600">${item.quantity}</div>
+                        <div class="flex-1 truncate font-bold text-gray-700 text-base">${item.name}</div>
+                        <div class="text-right flex flex-col items-end min-w-[80px]">
+                            <span class="text-[10px] text-gray-400 leading-none">${fmt(item.price)}</span>
+                            <span class="font-roboto font-bold text-emerald-600 text-sm">${fmt(item.price * item.quantity)}</span>
+                        </div>
+                    </div>
+                `).join('');
+                lucide.createIcons();
+            }
+
+            const total = state.items.reduce((acc, i) => acc + (i.price * i.quantity), 0);
+            totalDisplay.innerText = fmt(total);
+
+            if (state.budget !== null) {
+                const balance = state.budget - total;
+                const isOver = balance < 0;
+                totalBox.className = `${isOver ? 'bg-red-500' : 'bg-emerald-500'} text-white p-4 rounded-3xl shadow-xl flex flex-col min-w-[140px] cursor-pointer pointer-events-auto transition-colors duration-300`;
+                budgetInfo.classList.remove('hidden');
+                document.getElementById('budget-value').innerText = fmt(state.budget);
+                document.getElementById('balance-label').innerText = isOver ? 'Falta: ' : 'Troco: ';
+                document.getElementById('balance-value').innerText = fmt(Math.abs(balance));
+            } else {
+                totalBox.className = 'bg-emerald-500 text-white p-4 rounded-3xl shadow-xl flex flex-col min-w-[140px] cursor-pointer pointer-events-auto transition-colors duration-300';
+                budgetInfo.classList.add('hidden');
+            }
+        }
+
+        // Evento do Formulário de Produto
+        document.getElementById('product-form').onsubmit = (e) => {
+            e.preventDefault();
+            const name = document.getElementById('p-name').value;
+            const price = parseFloat(document.getElementById('p-price').value);
+            const qty = parseFloat(document.getElementById('p-qty').value);
+
+            if (!name.trim() || isNaN(price) || price <= 0) {
+                document.getElementById('error-msg').classList.remove('hidden');
+                return;
+            }
+
+            const product = { id: state.editingId || Date.now().toString(), name, price, quantity: qty || 1 };
+
+            if (state.editingId) {
+                state.items = state.items.map(i => i.id === state.editingId ? product : i);
+            } else {
+                state.items.push(product);
+            }
+
+            closeModal('product-modal');
+            render();
+        };
+
+        // Exportar como Texto
+        window.exportAsText = () => {
+            if (state.items.length === 0) return;
+            const itemsText = state.items.map(i => `${i.quantity}x ${i.name} - ${fmt(i.price * i.quantity)}`).join('\n');
+            const total = state.items.reduce((acc, i) => acc + (i.price * i.quantity), 0);
+            const fullText = `🛒 Minha Lista de Compras\n\n${itemsText}\n\nTotal: ${fmt(total)}`;
+            
+            const el = document.createElement('textarea');
+            el.value = fullText;
+            document.body.appendChild(el);
+            el.select();
+            document.execCommand('copy');
+            document.body.removeChild(el);
+            
+            showToast('Lista copiada com sucesso!');
+            closeModal('menu-modal');
+        };
+
+        // Firebase: Salvar Lista
+        window.saveList = async () => {
+            if (!state.user) {
+                showToast('Aguardando autenticação...', 'error');
+                return;
+            }
+            if (state.items.length === 0) {
+                showToast('Não pode salvar lista vazia', 'error');
+                return;
+            }
+            const name = document.getElementById('list-name-input').value.trim() || `Lista de ${new Date().toLocaleDateString()}`;
+            const listId = Date.now().toString();
+
+            try {
+                await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'saved_lists', listId), {
+                    name,
+                    items: state.items,
+                    createdAt: serverTimestamp(),
+                    total: state.items.reduce((acc, i) => acc + (i.price * i.quantity), 0)
+                });
+                showToast('Lista salva na nuvem!');
+                document.getElementById('list-name-input').value = '';
+                closeModal('menu-modal');
+            } catch (err) {
+                console.error(err);
+                showToast('Erro ao salvar no banco', 'error');
+            }
+        };
+
+        // Firebase: Histórico Listener
+        function initHistoryListener() {
+            if (!state.user) return;
+            if (state.historyUnsubscribe) state.historyUnsubscribe();
+
+            const col = collection(db, 'artifacts', appId, 'public', 'data', 'saved_lists');
+            state.historyUnsubscribe = onSnapshot(col, (snap) => {
+                const lists = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                const container = document.getElementById('history-content');
+                
+                if (lists.length === 0) {
+                    container.innerHTML = '<div class="text-center py-20 text-gray-400">Nenhuma lista salva.</div>';
+                } else {
+                    container.innerHTML = lists.map(l => `
+                        <div onclick="window.loadSavedList('${l.id}')" class="bg-white border p-4 rounded-2xl flex items-center justify-between active:bg-gray-50">
+                            <div>
+                                <div class="font-bold text-gray-800">${l.name}</div>
+                                <div class="text-xs text-gray-400">${l.items.length} itens • ${fmt(l.total)}</div>
+                            </div>
+                            <button onclick="window.deleteSavedList(event, '${l.id}')" class="text-red-300 p-2"><i data-lucide="trash-2"></i></button>
+                        </div>
+                    `).join('');
+                    lucide.createIcons();
+                }
+            }, (error) => {
+                console.error("Firestore error:", error);
+            });
+        }
+
+        window.loadSavedList = async (id) => {
+            if (!state.user) return;
+            const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'saved_lists', id);
+            const res = await getDoc(docRef);
+            if (res.exists()) {
+                state.items = res.data().items;
+                closeModal('history-modal');
+                closeModal('menu-modal');
+                render();
+                showToast('Lista carregada!');
+            }
+        };
+
+        window.deleteSavedList = async (e, id) => {
+            e.stopPropagation();
+            if (!state.user) return;
+            try {
+                await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'saved_lists', id));
+                showToast('Lista excluída');
+            } catch (err) {
+                showToast('Erro ao excluir', 'error');
+            }
+        };
+
+        window.openHistory = () => {
+            document.getElementById('history-modal').classList.remove('hidden');
+        };
+
+        // Init
+        lucide.createIcons();
+    </script>
+</body>
+</html>
